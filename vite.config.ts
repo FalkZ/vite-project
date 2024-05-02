@@ -12,4 +12,7 @@ export default defineConfig({
 			fileName: "main",
 		},
 	},
+	optimizeDeps: {
+		exclude: ["*"], // exclude all modules from being bundled
+	},
 });
