@@ -21,9 +21,13 @@ const runBuiltFiles = (): Plugin => {
 			if (!isWatch) return;
 			outPaths.forEach((outPath) => {
 				console.log(`▶️ node ${outPath}`);
-				const process = spawn("node", [outPath], {
-					stdio: "inherit",
-				});
+				const process = spawn(
+					"node",
+					["-r", "source-map-support/register", outPath],
+					{
+						stdio: "inherit",
+					}
+				);
 
 				process.on("error", (error) => {
 					console.error(error);

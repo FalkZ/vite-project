@@ -1,3 +1,5 @@
-export const hello = (message: string) => console.log("Hello,", message);
+export const hello = (message: string) => {
+	console.log("Hello,", message);
+};
 
 hello("Node!");
