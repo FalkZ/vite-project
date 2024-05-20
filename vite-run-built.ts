@@ -6,9 +6,20 @@ const runBuiltFiles = (): Plugin => {
 	let outPaths: string[] = [];
 	let isWatch = false;
 
+	let lastProcess;
+	let argsAfterDoubleDash;
+
+	process.on("exit", () => {
+		if (lastProcess) lastProcess.kill("SIGKILL");
+	});
+
 	return {
 		name: "execute-after-bundle",
 		configResolved(config) {
+			const argsIndex = process.argv.indexOf("--");
+			argsAfterDoubleDash =
+				argsIndex !== -1 ? process.argv.slice(argsIndex + 1) : [];
+
 			isWatch = Boolean(config.build.watch);
 		},
 		generateBundle(outputOptions, bundle) {
@@ -20,23 +31,38 @@ const runBuiltFiles = (): Plugin => {
 		closeBundle() {
 			if (!isWatch) return;
 			outPaths.forEach((outPath) => {
-				console.log(`▶️ node ${outPath}`);
-				const process = spawn(
+				if (lastProcess) lastProcess.kill("SIGKILL");
+
+				const stringCommand = `node ${outPath} ${argsAfterDoubleDash.join(
+					" "
+				)}`;
+
+				console.log(`▶️ ${stringCommand}`);
+				lastProcess = spawn(
 					"node",
-					["-r", "source-map-support/register", outPath],
+					[
+						"-r",
+						"source-map-support/register",
+						outPath,
+						...argsAfterDoubleDash,
+					],
 					{
 						stdio: "inherit",
 					}
 				);
 
-				process.on("error", (error) => {
+				lastProcess.on("error", (error) => {
 					console.error(error);
 				});
 
-				process.on("close", (code) => {
+				lastProcess.on("close", (code) => {
+					if (!code) return; // was killed
 					if (code === 0)
-						console.log(`✓ node ${outPath}: exited with code ${code}`);
-					else console.error(`x node ${outPath}: exited with code ${code}`);
+						console.log(`✓ ${stringCommand}: exited with code ${code}`);
+					if (code === 13) {
+						console.error(`x ${stringCommand}: exited with code ${code}`);
+						process.exit(13); // ctrl+c on child also exit the parent
+					} else console.error(`x ${stringCommand}: exited with code ${code}`);
 				});
 			});
 		},
